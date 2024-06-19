@@ -1,0 +1,56 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+
+void get_memory_info() {
+    FILE *fp;
+    char path[1024];
+
+    fp = popen("free", "r");
+    if (fp == NULL) {
+        printf("Failed to run command\n");
+        exit(1);
+    }
+
+    while (fgets(path, sizeof(path), fp) != NULL) {
+        printf("%s", path);
+    }
+
+    pclose(fp);
+}
+
+int main() {
+    pid_t pid = fork();
+
+    if (pid < 0) {
+        fprintf(stderr, "Fork failed\n");
+        return 1;
+    }
+
+    if (pid > 0) {
+        printf("Daemon started\n");
+        exit(0);
+    }
+
+    umask(0);
+
+    if (setsid() < 0) {
+        fprintf(stderr, "Failed to create new session\n");
+        return 1;
+    }
+
+    chdir("/");
+
+    close(STDIN_FILENO);
+    close(STDOUT_FILENO);
+    close(STDERR_FILENO);
+
+    while (1) {
+        get_memory_info();
+        sleep(5);
+    }
+
+    return 0;
+}
